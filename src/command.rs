@@ -1,7 +1,10 @@
+//! Commands and aliases
+
 /// Gerber Commands
-/// 
+///
 /// Each variant is the "long name" listed in §2.8 of the specification.
 /// Variants are also identified by [command code constants](crate::command#constants).
+#[derive(Clone, PartialEq, PartialOrd, Hash, Debug)]
 pub enum Command {
     /// [G04] A human readable comment, does not affect the image.
     Comment,
