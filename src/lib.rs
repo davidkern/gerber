@@ -28,9 +28,11 @@
 //!   [Ucamco Downloads](https://www.ucamco.com/en/gerber/downloads)
 //! [^2]: Groan... I didn't notice the pun until later.
 
+pub mod attribute;
 pub mod command;
 pub mod data;
 
+use attribute::FileAttributeName;
 use thiserror::Error;
 
 use crate::command::Command::{self, *};
@@ -78,7 +80,7 @@ pub fn gerber(input: &str) -> IResult<Vec<Command>> {
                     // region_statement,
                     // ab_statement,
                     // sr_statement,
-                    // attribute_on_file,
+                    attribute_on_file,
                     // attribute_on_aperture,
                     // attribute_on_object,
                     // attribute_delete,
@@ -290,7 +292,17 @@ fn sr_statement(input: &str) -> IResult<Command> {
 }
 
 fn attribute_on_file(input: &str) -> IResult<Command> {
-    todo!()
+    map(
+        delimited(
+            tag("%TF"),
+            pair(
+                FileAttributeName::parse,
+                many0(preceded(tag(","), field))
+            ),
+            tag("*%")
+        ),
+        |_| AttributeOnFile
+    )(input)
 }
 
 fn attribute_on_aperture(input: &str) -> IResult<Command> {
