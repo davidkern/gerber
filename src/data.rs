@@ -71,7 +71,10 @@ pub(crate) fn into_aperture_id(x: i32) -> ApertureId {
 
 /// Parse an aperture identifier
 pub(crate) fn aperture_identifier(input: &str) -> IResult<ApertureId> {
-    map(preceded(char('D'), positive_integer), into_aperture_id)(input)
+    verify(
+        map(preceded(char('D'), positive_integer), into_aperture_id),
+        |id| id.0 >= 10
+    )(input)
 }
 
 /// Parse the first character in a name fragment (excludes '.')

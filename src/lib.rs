@@ -34,6 +34,7 @@ pub mod data;
 
 use attribute::FileAttributeName;
 use command::{extended_command, simple_word_command, word_command};
+use nom::combinator::verify;
 use thiserror::Error;
 
 use crate::command::Command::{self, *};
@@ -67,14 +68,17 @@ pub fn gerber(input: &str) -> IResult<Vec<Command>> {
                     comment,
                     mode,
                     format_specification,
-                    // aperture_define,
+                    aperture_define,
                     // aperture_macro,
-                    // set_current_aperture,
+                    set_current_aperture,
                     arc_init,
                     set_linear,
                     set_cw_circular,
                     set_ccw_circular,
-                    // load_polarity,
+                    plot_operation,
+                    move_operation,
+                    flash_operation,
+                    load_polarity,
                     // load_mirroring,
                     // load_rotation,
                     // load_scaling,
@@ -231,7 +235,10 @@ fn aperture_macro(input: &str) -> IResult<Command> {
 }
 
 fn set_current_aperture(input: &str) -> IResult<Command> {
-    todo!()
+    map(
+        terminated(aperture_identifier, tag("*")),
+        |_| SetCurrentAperture
+    )(input)
 }
 
 fn arc_init(input: &str) -> IResult<Command> {
@@ -251,15 +258,56 @@ fn set_ccw_circular(input: &str) -> IResult<Command> {
 }
 
 fn plot_operation(input: &str) -> IResult<Command> {
-    todo!()
+    map(
+        terminated(
+            tuple((
+                opt(preceded(tag("X"), integer)),
+                opt(preceded(tag("Y"), integer)),
+                opt(
+                    pair(
+                        preceded(tag("I"), integer),
+                        preceded(tag("J"), integer)
+                    )
+                )
+            )),
+            tag("D01*")
+        ),
+        |_| Plot
+    )(input)
 }
 
 fn move_operation(input: &str) -> IResult<Command> {
-    todo!()
+    map(
+        terminated(
+            pair(
+                opt(preceded(tag("X"), integer)),
+                opt(preceded(tag("Y"), integer))
+            ),
+            tag("D02*")
+        ),
+        |_| Move
+    )(input)
+}
+
+fn flash_operation(input: &str) -> IResult<Command> {
+    map(
+        terminated(
+            pair(
+                opt(preceded(tag("X"), integer)),
+                opt(preceded(tag("Y"), integer))
+            ),
+            tag("D03*")
+        ),
+        |_| Flash
+    )(input)
 }
 
 fn load_polarity(input: &str) -> IResult<Command> {
-    todo!()
+    extended_command(
+        "LP",
+        alt((tag("C"), tag("D"))),
+        |_| LoadPolarity,
+    )(input)
 }
 
 fn load_mirroring(input: &str) -> IResult<Command> {
@@ -404,6 +452,7 @@ mod test {
     #[test]
     fn test_aperture_define() {
         assert_eq!(aperture_define("%ADD10C,0.1*%"), Ok(("", ApertureDefine)));
+        assert_eq!(aperture_define("%ADD10C,7.500000*%"), Ok(("", ApertureDefine)));
         assert_eq!(aperture_define("%ADD11C,0.6*%"), Ok(("", ApertureDefine)));
         assert_eq!(
             aperture_define("%ADD12R,0.6X0.6*%"),
