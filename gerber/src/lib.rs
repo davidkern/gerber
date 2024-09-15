@@ -34,7 +34,6 @@ pub mod data;
 
 use attribute::FileAttributeName;
 use command::{extended_command, simple_word_command, word_command};
-use nom::combinator::verify;
 use thiserror::Error;
 
 use crate::command::Command::{self, *};
@@ -43,11 +42,10 @@ use nom::character::complete::char;
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{anychar, line_ending, one_of},
-    combinator::{all_consuming, map, map_res, opt, recognize, value},
-    multi::{many0, many1},
+    character::complete::{anychar, line_ending},
+    combinator::{all_consuming, map, map_res, opt},
+    multi::many0,
     sequence::{delimited, pair, preceded, separated_pair, terminated, tuple},
-    Err,
 };
 
 pub(crate) type IResult<'a, T> = nom::IResult<&'a str, T>;

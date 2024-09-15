@@ -1,10 +1,10 @@
 use assert_matches::assert_matches;
-use gerber::gerber;
+use gerber::GerberLayer;
 use std::fs::read_to_string;
 
 fn test_file(filename: &str) {
     let data = read_to_string(filename).unwrap();
-    assert_matches!(gerber(&data), Ok(_));
+    assert_matches!(GerberLayer::parse(&data), Ok(_));
 }
 
 #[test]

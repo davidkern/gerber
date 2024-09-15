@@ -1,10 +1,10 @@
 //! Commands and aliases
 
-use crate::{EscapedString, IResult};
+use crate::IResult;
 use nom::{
     bytes::complete::tag,
-    combinator::{map, success, value},
-    sequence::{delimited, pair, terminated},
+    combinator::{map, value},
+    sequence::{delimited, pair},
 };
 pub use Command::*;
 

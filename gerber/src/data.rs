@@ -1,6 +1,6 @@
 //! Data types
 
-use std::{borrow::Cow, cell::Cell, ops::Deref};
+use std::borrow::Cow;
 
 use crate::IResult;
 use nom::{
