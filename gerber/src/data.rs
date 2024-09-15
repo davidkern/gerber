@@ -73,7 +73,7 @@ pub(crate) fn into_aperture_id(x: i32) -> ApertureId {
 pub(crate) fn aperture_identifier(input: &str) -> IResult<ApertureId> {
     verify(
         map(preceded(char('D'), positive_integer), into_aperture_id),
-        |id| id.0 >= 10
+        |id| id.0 >= 10,
     )(input)
 }
 

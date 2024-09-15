@@ -108,7 +108,7 @@ pub(crate) fn extended_command<'a, T>(
 ) -> impl FnMut(&'a str) -> IResult<'a, Command> {
     map(
         delimited(pair(tag("%"), tag(code)), parser, tag("*%")),
-        command
+        command,
     )
 }
 

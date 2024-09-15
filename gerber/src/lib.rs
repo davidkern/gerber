@@ -56,10 +56,25 @@ pub(crate) type IResult<'a, T> = nom::IResult<&'a str, T>;
 pub enum GerberError {
     #[error("coodinate digits invalid")]
     CoodinateDigits,
+
+    #[error("parse error: {0}")]
+    ParseError(String),
+}
+
+#[derive(Debug)]
+pub struct GerberLayer {
+    commands: Vec<Command>,
+}
+
+impl GerberLayer {
+    pub fn parse(src: &str) -> Result<Self, GerberError> {
+        let (_, commands) = gerber(src).map_err(|e| GerberError::ParseError(format!("{:?}", e)))?;
+        Ok(GerberLayer { commands })
+    }
 }
 
 /// Parse a gerber file into a list of [Command]s
-pub fn gerber(input: &str) -> IResult<Vec<Command>> {
+fn gerber(input: &str) -> IResult<Vec<Command>> {
     map(
         all_consuming(pair(
             many0(delimited(
@@ -107,11 +122,7 @@ fn comment(input: &str) -> IResult<Command> {
 }
 
 fn mode(input: &str) -> IResult<Command> {
-    extended_command(
-        "MO",
-        alt((tag("MM"), tag("IN"))),
-        |_| Mode
-    )(input)
+    extended_command("MO", alt((tag("MM"), tag("IN"))), |_| Mode)(input)
 }
 
 fn coordinate_digits(input: &str) -> IResult<u8> {
@@ -130,7 +141,7 @@ fn format_specification(input: &str) -> IResult<Command> {
     extended_command(
         "FSLAX",
         separated_pair(coordinate_digits, tag("Y"), coordinate_digits),
-        |(_, _)| FormatSpecification
+        |(_, _)| FormatSpecification,
     )(input)
 }
 
@@ -138,13 +149,10 @@ fn aperture_define_circle(input: &str) -> IResult<Command> {
     extended_command(
         "AD",
         pair(
-            terminated(
-                aperture_identifier,
-                pair(tag("C,"), many0(line_ending))
-            ),
-            pair(decimal, opt(preceded(char('X'), decimal)))
+            terminated(aperture_identifier, pair(tag("C,"), many0(line_ending))),
+            pair(decimal, opt(preceded(char('X'), decimal))),
         ),
-        |(_, _)| ApertureDefine
+        |(_, _)| ApertureDefine,
     )(input)
 }
 
@@ -152,16 +160,13 @@ fn aperture_define_rectangle(input: &str) -> IResult<Command> {
     extended_command(
         "AD",
         pair(
-            terminated(
-                aperture_identifier,
-                pair(tag("R,"), many0(line_ending)),
-            ),
+            terminated(aperture_identifier, pair(tag("R,"), many0(line_ending))),
             pair(
                 separated_pair(decimal, char('X'), decimal),
                 opt(preceded(char('X'), decimal)),
-            )
+            ),
         ),
-        |(_, _)| ApertureDefine
+        |(_, _)| ApertureDefine,
     )(input)
 }
 
@@ -169,16 +174,13 @@ fn aperture_define_obround(input: &str) -> IResult<Command> {
     extended_command(
         "AD",
         pair(
-            terminated(
-                aperture_identifier,
-                pair(tag("O,"), many0(line_ending)),
-            ),
+            terminated(aperture_identifier, pair(tag("O,"), many0(line_ending))),
             pair(
                 separated_pair(decimal, char('X'), decimal),
                 opt(preceded(char('X'), decimal)),
-            )
+            ),
         ),
-        |(_, _)| ApertureDefine
+        |(_, _)| ApertureDefine,
     )(input)
 }
 
@@ -186,19 +188,16 @@ fn aperture_define_polygon(input: &str) -> IResult<Command> {
     extended_command(
         "AD",
         pair(
-            terminated(
-                aperture_identifier,
-                pair(tag("P,"), many0(line_ending)),
-            ),
+            terminated(aperture_identifier, pair(tag("P,"), many0(line_ending))),
             pair(
                 separated_pair(decimal, char('X'), decimal),
                 opt(preceded(
                     char('X'),
                     pair(decimal, opt(preceded(char('X'), decimal))),
                 )),
-            )
+            ),
         ),
-        |(_, _)| ApertureDefine
+        |(_, _)| ApertureDefine,
     )(input)
 }
 
@@ -235,10 +234,9 @@ fn aperture_macro(input: &str) -> IResult<Command> {
 }
 
 fn set_current_aperture(input: &str) -> IResult<Command> {
-    map(
-        terminated(aperture_identifier, tag("*")),
-        |_| SetCurrentAperture
-    )(input)
+    map(terminated(aperture_identifier, tag("*")), |_| {
+        SetCurrentAperture
+    })(input)
 }
 
 fn arc_init(input: &str) -> IResult<Command> {
@@ -263,16 +261,14 @@ fn plot_operation(input: &str) -> IResult<Command> {
             tuple((
                 opt(preceded(tag("X"), integer)),
                 opt(preceded(tag("Y"), integer)),
-                opt(
-                    pair(
-                        preceded(tag("I"), integer),
-                        preceded(tag("J"), integer)
-                    )
-                )
+                opt(pair(
+                    preceded(tag("I"), integer),
+                    preceded(tag("J"), integer),
+                )),
             )),
-            tag("D01*")
+            tag("D01*"),
         ),
-        |_| Plot
+        |_| Plot,
     )(input)
 }
 
@@ -281,11 +277,11 @@ fn move_operation(input: &str) -> IResult<Command> {
         terminated(
             pair(
                 opt(preceded(tag("X"), integer)),
-                opt(preceded(tag("Y"), integer))
+                opt(preceded(tag("Y"), integer)),
             ),
-            tag("D02*")
+            tag("D02*"),
         ),
-        |_| Move
+        |_| Move,
     )(input)
 }
 
@@ -294,20 +290,16 @@ fn flash_operation(input: &str) -> IResult<Command> {
         terminated(
             pair(
                 opt(preceded(tag("X"), integer)),
-                opt(preceded(tag("Y"), integer))
+                opt(preceded(tag("Y"), integer)),
             ),
-            tag("D03*")
+            tag("D03*"),
         ),
-        |_| Flash
+        |_| Flash,
     )(input)
 }
 
 fn load_polarity(input: &str) -> IResult<Command> {
-    extended_command(
-        "LP",
-        alt((tag("C"), tag("D"))),
-        |_| LoadPolarity,
-    )(input)
+    extended_command("LP", alt((tag("C"), tag("D"))), |_| LoadPolarity)(input)
 }
 
 fn load_mirroring(input: &str) -> IResult<Command> {
@@ -452,7 +444,10 @@ mod test {
     #[test]
     fn test_aperture_define() {
         assert_eq!(aperture_define("%ADD10C,0.1*%"), Ok(("", ApertureDefine)));
-        assert_eq!(aperture_define("%ADD10C,7.500000*%"), Ok(("", ApertureDefine)));
+        assert_eq!(
+            aperture_define("%ADD10C,7.500000*%"),
+            Ok(("", ApertureDefine))
+        );
         assert_eq!(aperture_define("%ADD11C,0.6*%"), Ok(("", ApertureDefine)));
         assert_eq!(
             aperture_define("%ADD12R,0.6X0.6*%"),

@@ -1,0 +1,9 @@
+[package]
+name = "gerber-dump"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.89"
+clap = { version = "4.5.17", features = ["derive"] }
+gerber = { path = "../gerber" }
