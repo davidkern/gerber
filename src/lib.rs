@@ -33,6 +33,7 @@ pub mod command;
 pub mod data;
 
 use attribute::FileAttributeName;
+use command::{extended_command, simple_word_command, word_command};
 use thiserror::Error;
 
 use crate::command::Command::{self, *};
@@ -98,13 +99,14 @@ pub fn gerber(input: &str) -> IResult<Vec<Command>> {
 }
 
 fn comment(input: &str) -> IResult<Command> {
-    map(delimited(tag("G04"), string, char('*')), |_| Comment)(input)
+    word_command("G04", string, |_| Command::Comment)(input)
 }
 
 fn mode(input: &str) -> IResult<Command> {
-    map(
-        delimited(tag("%MO"), alt((tag("MM"), tag("IN"))), tag("*%")),
-        |_| Mode,
+    extended_command(
+        "MO",
+        alt((tag("MM"), tag("IN"))),
+        |_| Mode
     )(input)
 }
 
@@ -121,72 +123,66 @@ fn coordinate_digits(input: &str) -> IResult<u8> {
 }
 
 fn format_specification(input: &str) -> IResult<Command> {
-    map(
-        delimited(
-            tag("%FSLAX"),
-            separated_pair(coordinate_digits, tag("Y"), coordinate_digits),
-            tag("*%"),
-        ),
-        |(_, _)| FormatSpecification,
+    extended_command(
+        "FSLAX",
+        separated_pair(coordinate_digits, tag("Y"), coordinate_digits),
+        |(_, _)| FormatSpecification
     )(input)
 }
 
 fn aperture_define_circle(input: &str) -> IResult<Command> {
-    map(
-        delimited(
-            delimited(
-                tag("%AD"),
+    extended_command(
+        "AD",
+        pair(
+            terminated(
                 aperture_identifier,
-                pair(tag("C,"), many0(line_ending)),
+                pair(tag("C,"), many0(line_ending))
             ),
-            pair(decimal, opt(preceded(char('X'), decimal))),
-            tag("*%"),
+            pair(decimal, opt(preceded(char('X'), decimal)))
         ),
-        |(_, _)| ApertureDefine,
+        |(_, _)| ApertureDefine
     )(input)
 }
 
 fn aperture_define_rectangle(input: &str) -> IResult<Command> {
-    map(
-        delimited(
-            delimited(
-                tag("%AD"),
+    extended_command(
+        "AD",
+        pair(
+            terminated(
                 aperture_identifier,
                 pair(tag("R,"), many0(line_ending)),
             ),
             pair(
                 separated_pair(decimal, char('X'), decimal),
                 opt(preceded(char('X'), decimal)),
-            ),
-            tag("*%"),
+            )
         ),
-        |(_, _)| ApertureDefine,
+        |(_, _)| ApertureDefine
     )(input)
 }
 
 fn aperture_define_obround(input: &str) -> IResult<Command> {
-    map(
-        delimited(
-            delimited(
-                tag("%AD"),
+    extended_command(
+        "AD",
+        pair(
+            terminated(
                 aperture_identifier,
                 pair(tag("O,"), many0(line_ending)),
             ),
             pair(
                 separated_pair(decimal, char('X'), decimal),
                 opt(preceded(char('X'), decimal)),
-            ),
-            tag("*%"),
+            )
         ),
-        |(_, _)| ApertureDefine,
+        |(_, _)| ApertureDefine
     )(input)
 }
 
 fn aperture_define_polygon(input: &str) -> IResult<Command> {
-    map(
-        delimited(
-            delimited(
-                tag("%AD"),
+    extended_command(
+        "AD",
+        pair(
+            terminated(
                 aperture_identifier,
                 pair(tag("P,"), many0(line_ending)),
             ),
@@ -196,10 +192,9 @@ fn aperture_define_polygon(input: &str) -> IResult<Command> {
                     char('X'),
                     pair(decimal, opt(preceded(char('X'), decimal))),
                 )),
-            ),
-            tag("*%"),
+            )
         ),
-        |(_, _)| ApertureDefine,
+        |(_, _)| ApertureDefine
     )(input)
 }
 
@@ -212,7 +207,7 @@ fn aperture_define_macro(input: &str) -> IResult<Command> {
                 name,
                 opt(preceded(
                     char(','),
-                    pair(decimal, opt(preceded(char('X'), decimal)))
+                    pair(decimal, opt(preceded(char('X'), decimal))),
                 )),
             )),
             tag("*%"),
@@ -240,19 +235,19 @@ fn set_current_aperture(input: &str) -> IResult<Command> {
 }
 
 fn arc_init(input: &str) -> IResult<Command> {
-    value(ArcInit, tag("G75*"))(input)
+    simple_word_command("G75", ArcInit)(input)
 }
 
 fn set_linear(input: &str) -> IResult<Command> {
-    value(SetLinear, tag("G01*"))(input)
+    simple_word_command("G01", SetLinear)(input)
 }
 
 fn set_cw_circular(input: &str) -> IResult<Command> {
-    value(SetCWCircular, tag("G02*"))(input)
+    simple_word_command("G02", SetCWCircular)(input)
 }
 
 fn set_ccw_circular(input: &str) -> IResult<Command> {
-    value(SetCCWCircular, tag("G03*"))(input)
+    simple_word_command("G03", SetCCWCircular)(input)
 }
 
 fn plot_operation(input: &str) -> IResult<Command> {
@@ -292,16 +287,10 @@ fn sr_statement(input: &str) -> IResult<Command> {
 }
 
 fn attribute_on_file(input: &str) -> IResult<Command> {
-    map(
-        delimited(
-            tag("%TF"),
-            pair(
-                FileAttributeName::parse,
-                many0(preceded(tag(","), field))
-            ),
-            tag("*%")
-        ),
-        |_| AttributeOnFile
+    extended_command(
+        "TF",
+        pair(FileAttributeName::parse, many0(preceded(tag(","), field))),
+        |_| AttributeOnFile,
     )(input)
 }
 
@@ -318,7 +307,7 @@ fn attribute_delete(input: &str) -> IResult<Command> {
 }
 
 fn end_of_file(input: &str) -> IResult<Command> {
-    value(EndOfFile, tag("M02*"))(input)
+    simple_word_command("M02", EndOfFile)(input)
 }
 
 #[cfg(test)]

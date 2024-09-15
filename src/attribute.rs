@@ -1,6 +1,6 @@
-use nom::{branch::alt, combinator::map};
-use nom::combinator::value;
 use nom::bytes::complete::tag;
+use nom::combinator::value;
+use nom::{branch::alt, combinator::map};
 
 use crate::{system_name, user_name, IResult};
 
@@ -29,14 +29,8 @@ impl<'a> FileAttributeName<'a> {
             value(Self::GenerationSoftware, tag(".GenerationSoftware")),
             value(Self::ProjectId, tag(".ProjectId")),
             value(Self::MD5, tag(".MD5")),
-            map(
-                system_name,
-                |s| Self::UnknownStandardName(s)
-            ),
-            map(
-                user_name,
-                |s| Self::UserDefinedName(s)
-            ),
+            map(system_name, |s| Self::UnknownStandardName(s)),
+            map(user_name, |s| Self::UserDefinedName(s)),
         ))(input)
     }
 }

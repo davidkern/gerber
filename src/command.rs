@@ -1,5 +1,13 @@
 //! Commands and aliases
 
+use crate::{EscapedString, IResult};
+use nom::{
+    bytes::complete::tag,
+    combinator::{map, success, value},
+    sequence::{delimited, pair, terminated},
+};
+pub use Command::*;
+
 /// Gerber Commands
 ///
 /// Each variant is the "long name" listed in §2.8 of the specification.
@@ -7,7 +15,7 @@
 #[derive(Clone, PartialEq, PartialOrd, Hash, Debug)]
 pub enum Command {
     /// [G04] A human readable comment, does not affect the image.
-    Comment,
+    Comment, // TODO: add comment string
 
     /// [MO] Sets the unit to mm or inch.
     Mode,
@@ -93,90 +101,28 @@ pub enum Command {
     EndOfFile,
 }
 
-pub use Command::*;
+pub(crate) fn extended_command<'a, T>(
+    code: &'static str,
+    parser: impl FnMut(&'a str) -> IResult<'a, T>,
+    command: impl Fn(T) -> Command,
+) -> impl FnMut(&'a str) -> IResult<'a, Command> {
+    map(
+        delimited(pair(tag("%"), tag(code)), parser, tag("*%")),
+        command
+    )
+}
 
-/// [Comment] A human readable comment, does not affect the image.
-pub const G04: Command = Comment;
+pub(crate) fn word_command<'a, T>(
+    code: &'static str,
+    parser: impl FnMut(&'a str) -> IResult<'a, T>,
+    command: impl Fn(T) -> Command,
+) -> impl FnMut(&'a str) -> IResult<'a, Command> {
+    map(delimited(tag(code), parser, tag("*")), command)
+}
 
-/// [Mode] Sets the unit to mm or inch.
-pub const MO: Command = Mode;
-
-/// [FormatSpecification] Sets the coordinate format, e.g. the number of decimals.
-pub const FS: Command = FormatSpecification;
-
-/// [ApertureDefine] Defines a template-based aperture, assigns a D code to it.
-pub const AD: Command = ApertureDefine;
-
-/// [ApertureMacro] Defines a macro aperture template.
-pub const AM: Command = ApertureMacro;
-
-/// [SetCurrentAperture] (Dnn for nn≥10) Sets the current aperture to D code nn.
-pub const D: Command = SetCurrentAperture;
-
-/// [Plot] Outside a region statement [D01] creates a draw or arc
-/// object with the current aperture. Inside it adds a draw/arc
-/// segment to the contour under construction. The current
-/// point is moved to draw/arc end point after the creation of
-/// the draw/arc.
-pub const D01: Command = Plot;
-
-/// [Move] Moves the current point to the coordinate in the
-/// command. It does not create an object.
-pub const D02: Command = Move;
-
-/// [Flash] Creates a flash object with the current aperture. The
-/// current point is moved to the flash point.
-pub const D03: Command = Flash;
-
-/// [SetLinear] Sets linear/circular mode to linear.
-pub const G01: Command = SetLinear;
-
-/// [SetCWCircular] Sets linear/circular mode to clockwise circular.
-pub const G02: Command = SetCWCircular;
-
-/// [SetCCWCircular] Sets linear/circular mode to counterclockwise circular.
-pub const G03: Command = SetCCWCircular;
-
-/// [ArcInit] Must be called before creating the first arc.
-pub const G75: Command = ArcInit;
-
-/// [LoadPolarity] Loads the polarity object transformation parameter.
-pub const LP: Command = LoadPolarity;
-
-/// [LoadMirroring] Loads the mirror object transformation parameter.
-pub const LM: Command = LoadMirroring;
-
-/// [LoadRotation] Loads the rotation object transformation parameter.
-pub const LR: Command = LoadRotation;
-
-/// [LoadScaling] Loads the scale object transformation parameter.
-pub const LS: Command = LoadScaling;
-
-/// [StartRegion] Starts a region statement which creates a region by
-/// defining its contours.
-pub const G36: Command = StartRegion;
-
-/// [EndRegion] Ends the region statement.
-pub const G37: Command = EndRegion;
-
-/// [ApertureBlock] Opens a block aperture statement and assigns its aperture
-/// number or closes a block aperture statement.
-pub const AB: Command = ApertureBlock;
-
-/// [StepAndRepeat] Open or closes a step and repeat statement.
-pub const SR: Command = StepAndRepeat;
-
-/// [AttributeOnFile] Set a file attribute.
-pub const TF: Command = AttributeOnFile;
-
-/// [AttributeOnAperture] Add an aperture attribute to the dictionary or modify it.
-pub const TA: Command = AttributeOnAperture;
-
-/// [AttributeOnObject] Add an object attribute to the dictionary or modify it.
-pub const TO: Command = AttributeOnObject;
-
-/// [AttributeDelete] Delete one or all attributes in the dictionary.
-pub const TD: Command = AttributeDelete;
-
-/// [EndOfFile] End of file.
-pub const M02: Command = EndOfFile;
+pub(crate) fn simple_word_command<'a>(
+    code: &'static str,
+    command: Command,
+) -> impl FnMut(&'a str) -> IResult<'a, Command> {
+    value(command, pair(tag(code), tag("*")))
+}

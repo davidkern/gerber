@@ -1,6 +1,6 @@
 use assert_matches::assert_matches;
-use std::fs::read_to_string;
 use gerber::gerber;
+use std::fs::read_to_string;
 
 fn test_file(filename: &str) {
     let data = read_to_string(filename).unwrap();
