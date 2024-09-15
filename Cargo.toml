@@ -7,3 +7,6 @@ edition = "2021"
 indoc = "2.0.5"
 nom = "7.1.3"
 thiserror = "1.0.63"
+
+[dev-dependencies]
+assert_matches = "1.5.0"
